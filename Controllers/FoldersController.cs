@@ -3,9 +3,7 @@ using FileUploaderBack.Data;
 using FileUploaderBack.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
 using FileUploaderBack.Models.Dto;
 [ApiController]
 [Route("/api/user/{userId}/[controller]")]
@@ -18,23 +16,49 @@ public class FoldersController : ControllerBase
     }
     [HttpGet("{id}")]
     [Authorize]
-    public async Task<ActionResult<Folder>> GetFolderById( int userId , int id ) 
+    public async Task<ActionResult<object>> GetFolderById( int userId , int id ) 
     {
-        var folder = await _context.Folders.Include(f => f.Files).Include(f => f.ChildFolders)
-        .FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
-        if ( folder == null ) return NotFound(); 
-        return folder ; 
+        try
+        {
+            var folder = await _context.Folders.FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
+            if ( folder == null ) return NotFound(); 
+            var childFolders = await _context.Folders.Where( f => f.ParentFolderId == id ).ToListAsync();
+            var files = await _context.Files.Where( f => f.FolderId == id ).ToListAsync();
+            return Ok(new{
+                folder ,
+                childFolders,
+                files
+            }) ; 
+        }
+        catch ( Exception ex )
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+        
     }
     [HttpGet]
     [Authorize]
-    public async Task<ActionResult<Folder>> GetUserRootFolder ( int userId ) 
+    public async Task<ActionResult<object>> GetUserRootFolder ( int userId ) 
     {
-        var rootFolder = await _context.Folders
-        .Include(f => f.Files).Include(f => f.ChildFolders)
-        .Where(f => f.UserId == userId && f.ParentFolderId == null)
-        .OrderBy( f => f.Id ).FirstOrDefaultAsync();
-        if ( rootFolder == null ) return NotFound() ; 
-        return rootFolder ; 
+        try
+        {
+            var rootFolder = await _context.Folders
+            .Where(f => f.UserId == userId && f.ParentFolderId == null)
+            .OrderBy( f => f.Id ).FirstOrDefaultAsync();
+            if ( rootFolder == null ) return NotFound() ; 
+            var childFolders = await _context.Folders.Where( f => f.ParentFolderId == rootFolder.Id ).ToListAsync();
+            var files = await _context.Files.Where( f => f.FolderId == rootFolder.Id ).ToListAsync();
+            return Ok(new{
+                rootFolder,
+                childFolders,
+                files
+            }) ; 
+        }
+        catch ( Exception ex )
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+        
     }
     [HttpPost("addFolder/{id?}")]
     [Authorize]

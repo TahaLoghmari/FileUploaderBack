@@ -28,7 +28,7 @@ public class AuthController : ControllerBase
         
         if (userFromDb != null && BCrypt.Net.BCrypt.Verify(user.Password, userFromDb.Password))
         {
-            var token = GenerateJwtToken(userFromDb.Username);
+            var token = GenerateJwtToken(userFromDb.Username,userFromDb.Id);
             return Ok(new { token });
         }
         
@@ -58,14 +58,15 @@ public class AuthController : ControllerBase
         };
         _context.Folders.Add(rootFolder);
         await _context.SaveChangesAsync();
-        var token = GenerateJwtToken(user.Username);
+        var token = GenerateJwtToken(user.Username,user.Id);
         return Ok(new { token });
     }
-    private string GenerateJwtToken(string username)
+    private string GenerateJwtToken(string username , int userId)
 {
     var claims = new[]
     {
         new Claim(JwtRegisteredClaimNames.Sub, username),
+        new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
 
@@ -74,7 +75,7 @@ public class AuthController : ControllerBase
     var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
     var expiry = DateTime.Now.AddMinutes(
-        double.Parse(_configuration["Jwt:ExpiryMinutes"] ?? "30"));
+        double.Parse(_configuration["Jwt:ExpiryMinutes"] ?? "60"));
 
     var token = new JwtSecurityToken(
         issuer: _configuration["Jwt:Issuer"],
