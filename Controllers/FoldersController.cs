@@ -46,13 +46,7 @@ public class FoldersController : ControllerBase
             .Where(f => f.UserId == userId && f.ParentFolderId == null)
             .OrderBy( f => f.Id ).FirstOrDefaultAsync();
             if ( rootFolder == null ) return NotFound() ; 
-            var childFolders = await _context.Folders.Where( f => f.ParentFolderId == rootFolder.Id ).ToListAsync();
-            var files = await _context.Files.Where( f => f.FolderId == rootFolder.Id ).ToListAsync();
-            return Ok(new{
-                rootFolder,
-                childFolders,
-                files
-            }) ; 
+            return Ok(rootFolder) ; 
         }
         catch ( Exception ex )
         {

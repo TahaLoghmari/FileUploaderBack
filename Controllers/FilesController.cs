@@ -46,7 +46,6 @@ public class FilesController : ControllerBase
         {
             Name = dto.Name,
             Size = dto.Size,
-            UploadPath = dto.UploadPath,
             FolderId = parentFolder.Id,
             CreatedAt = DateTime.UtcNow
         };
