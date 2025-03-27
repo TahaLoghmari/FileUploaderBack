@@ -6,6 +6,7 @@ namespace FileUploaderBack.Models
     public string Name { get; set; } = string.Empty;
     public long Size { get; set; } 
     public int FolderId { get; set; }
+    public string UploadPath { get ; set ; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public Folder Folder { get; set; } = null!;

@@ -99,16 +99,38 @@ public class FoldersController : ControllerBase
     }
     [HttpDelete("deleteFolder/{id}")]
     [Authorize]
-    public async Task<IActionResult> DeleteFolder ( int userId , int id )
+    public async Task<IActionResult> DeleteFolder(int userId, int id)
     {
         Folder? folder = await _context.Folders
                 .FirstOrDefaultAsync(f => f.Id == id && f.UserId == userId);
-        if ( folder == null ) return NotFound() ; 
+        if (folder == null) return NotFound();
 
-        _context.Folders.Remove(folder);
-        await _context.SaveChangesAsync();
+        await DeleteFolderRecursive(id);
         
         return Ok(new { message = "Folder deleted successfully." });
     }
-    
+    private async Task DeleteFolderRecursive(int folderId)
+    {
+        var childFolders = await _context.Folders
+            .Where(f => f.ParentFolderId == folderId)
+            .ToListAsync();
+
+        foreach (var childFolder in childFolders)
+        {
+            await DeleteFolderRecursive(childFolder.Id);
+        }
+
+        var files = await _context.Files
+            .Where(f => f.FolderId == folderId)
+            .ToListAsync();
+        
+        _context.Files.RemoveRange(files);
+
+        var folder = await _context.Folders.FindAsync(folderId);
+        if (folder != null)
+        {
+            _context.Folders.Remove(folder);
+        }
+        await _context.SaveChangesAsync();
+    }
 }

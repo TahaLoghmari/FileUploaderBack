@@ -67,8 +67,6 @@ namespace FileUploaderBack.Data
                       .IsRequired();
                 entity.Property(f => f.Size)
                       .IsRequired();
-                entity.Property(f => f.UploadPath)
-                      .IsRequired();
                 entity.Property(f => f.CreatedAt)
                       .IsRequired()
                       .HasDefaultValueSql("CURRENT_TIMESTAMP");

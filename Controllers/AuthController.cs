@@ -70,12 +70,13 @@ public class AuthController : ControllerBase
         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
     };
 
-    var key = new SymmetricSecurityKey(
-        Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+    _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT key is not configured")));
     var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
     var expiry = DateTime.Now.AddMinutes(
         double.Parse(_configuration["Jwt:ExpiryMinutes"] ?? "60"));
+        
 
     var token = new JwtSecurityToken(
         issuer: _configuration["Jwt:Issuer"],
