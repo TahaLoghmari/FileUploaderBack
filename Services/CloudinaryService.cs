@@ -30,17 +30,53 @@ namespace FileUploaderBack.Services
                 
             using var ms = new MemoryStream();
             await file.CopyToAsync(ms);
-            ms.Position = 0; // Reset stream position
+            ms.Position = 0; 
 
-            var uploadParams = new RawUploadParams
+            string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (extension == ".pdf") 
             {
-                File = new FileDescription(file.FileName, ms),
-                UseFilename = true,
-                UniqueFilename = true,
-                Folder = "file-uploader"
-            };
-            
-            return await _cloudinary.UploadAsync(uploadParams);
+                var uploadParams = new RawUploadParams
+                {
+                    File = new FileDescription(file.FileName, ms),
+                    UseFilename = true,
+                    UniqueFilename = true,
+                    Folder = "file-uploader"
+                };
+                
+                Console.WriteLine("Uploading PDF as raw file type");
+                return await _cloudinary.UploadAsync(uploadParams);
+            }
+            else if (IsImageFile(extension))
+            {
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(file.FileName, ms),
+                    UseFilename = true,
+                    UniqueFilename = true,
+                    Folder = "file-uploader"
+                };
+                
+                return await _cloudinary.UploadAsync(uploadParams);
+            }
+            else 
+            {
+                var uploadParams = new RawUploadParams
+                {
+                    File = new FileDescription(file.FileName, ms),
+                    UseFilename = true,
+                    UniqueFilename = true,
+                    Folder = "file-uploader"
+                };
+                
+                return await _cloudinary.UploadAsync(uploadParams);
+            }
+        }
+
+        private bool IsImageFile(string extension)
+        {
+            return extension == ".jpg" || extension == ".jpeg" || 
+                extension == ".png" || extension == ".gif" || 
+                extension == ".bmp" || extension == ".webp";
         }
     }
 }

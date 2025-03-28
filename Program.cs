@@ -11,9 +11,18 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", 
-        builder => builder
+    // Development CORS policy
+    options.AddPolicy("Development", 
+        policy => policy
             .WithOrigins("http://localhost:5173") 
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials());
+            
+    // Production CORS policy - more restrictive
+    options.AddPolicy("Production", 
+        policy => policy
+            .WithOrigins("https://fileuploaderfront.vercel.app")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
@@ -82,15 +91,40 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
-app.UseCors("AllowFrontend");
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        
+        await context.Response.WriteAsJsonAsync(new { 
+            error = "An unexpected error occurred"
+        });
+    });
+});
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseCors("Development");
     app.UseSwagger();
     app.UseSwaggerUI();
+    Console.WriteLine("Running in Development mode - CORS configured for localhost:5173");
+}
+else
+{
+    app.UseCors("Production");
+    Console.WriteLine("Running in Production mode - CORS configured for production domain");
 }
 
 app.UseHttpsRedirection();
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    await next();
+});
 app.UseAuthentication();
 app.UseAuthorization();
 

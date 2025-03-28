@@ -10,6 +10,7 @@ namespace FileUploaderBack.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Folder> Folders { get; set; }
         public DbSet<Filee> Files { get; set; }
+        public DbSet<SharedFile> SharedFiles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

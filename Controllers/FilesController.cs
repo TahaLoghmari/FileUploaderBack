@@ -103,50 +103,57 @@ public class FilesController : ControllerBase
         if (file == null)
             return NotFound();
 
-        string downloadUrl = file.UploadPath + "?fl_attachment=true&resource_type=raw";
-
-        try
+        string extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        string url = file.UploadPath;
+        if (extension == ".pdf")
         {
-            using var httpClient = new HttpClient();
-  
-            using var response = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
-            if (!response.IsSuccessStatusCode)
-                return StatusCode((int)response.StatusCode, "Error downloading file from Cloudinary");
-
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/pdf";
-
-            var fileBytes = await response.Content.ReadAsByteArrayAsync();
-            Console.WriteLine($"Downloaded file length: {fileBytes.Length} bytes");
-            
-            return File(fileBytes, contentType, file.Name);
+            if (!url.Contains("?"))
+                url += "?resource_type=raw&fl_attachment=true";
+            else
+                url += "&resource_type=raw&fl_attachment=true";
         }
-        catch (Exception ex)
+        else if (!url.Contains("?"))
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            url += "?fl_attachment=true";
         }
+        
+        return Redirect(url);
     }
     [HttpPost("share/{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> ShareFile(int id, [FromQuery] string duration)
     {
-        var file = await _context.Files.FirstOrDefaultAsync(f => f.Id == id);
+        Filee? file = await _context.Files.FirstOrDefaultAsync(f => f.Id == id);
         if (file == null)
             return NotFound("File not found.");
 
-        // Validate duration: must be something like "1d" or "10d"
         if (string.IsNullOrWhiteSpace(duration) || !duration.EndsWith("d") || !int.TryParse(duration.TrimEnd('d'), out int days))
         {
             return BadRequest("Duration must be specified in the format 'Xd' (e.g. '1d', '10d').");
         }
 
-        // Generate a share token and expiry date.
         Guid shareToken = Guid.NewGuid();
+
         DateTime expiry = DateTime.UtcNow.AddDays(days);
 
-        // For demonstration we simply return the share URL.
-        // In production, store (shareToken, file.Id, expiry) in a dedicated table for later validation.
-        string shareLink = $"http://localhost:5173/FileUploader/share/{shareToken}";
+        var sharedFile = new SharedFile
+        {
+            FileId = file.Id,
+            Token = shareToken.ToString(),
+            ExpiresAt = expiry
+        };
 
-        return Ok(new { shareLink, expiry });
-    }
+        _context.SharedFiles.Add(sharedFile);
+        await _context.SaveChangesAsync();
+
+        string baseUrl = $"{Request.Scheme}://{Request.Host}";
+        if (Request.Host.Value.Contains("localhost"))
+        {
+            baseUrl = "http://localhost:5173";
+        }
+        
+        string shareLink = $"{baseUrl}/share/{shareToken}";
+
+    return Ok(new { shareLink, expiry });
+}
 }
